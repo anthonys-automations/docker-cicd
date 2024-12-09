@@ -1,0 +1,17 @@
+services:
+  runner:
+    image: registry.oci.verevkin.ca:5000/infrastructure/github-runner:latest
+    restart: always
+    environment:
+      - ORGANIZATION=ecofarmtechnologies
+      - ACCESS_TOKEN=REDACTED
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.35'
+          memory: 300M
+        reservations:
+          cpus: '0.25'
+          memory: 128M

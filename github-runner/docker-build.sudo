@@ -1,0 +1,4 @@
+
+Defaults:github env_keep += "REGISTRY_PASSWORD"
+
+github ALL=(root) NOPASSWD: /opt/actions-runner/docker-build.sh
