@@ -11,8 +11,10 @@ IMAGE_NAME='infrastructure/github-runner'
 # Exit on errors
 set -e
 
+cp -a /usr/local/share/ca-certificates build/
+
 # Clean up old login session
-#rm /root/.docker/config.json || true
+rm /root/.docker/config.json || true
 
 docker login -u github --password-stdin ${REGISTRY} << EOF
 ${REGISTRY_PASSWORD}

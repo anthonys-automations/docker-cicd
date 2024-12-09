@@ -7,6 +7,8 @@ ARG ARCHITECTURE="arm64"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+COPY ca-certificates/ /usr/local/share/ca-certificates/
+
 # update the base packages and add a non-sudo user
 RUN apt-get update -y && apt-get upgrade -y && useradd -d /opt/actions-runner --system github
 
