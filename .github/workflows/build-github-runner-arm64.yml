@@ -21,6 +21,11 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.OCI_SSH_PRIVATE_KEY_GITHUB }}
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          endpoint: ssh://github@172.17.0.1
       - 
         name: Build and push
         id: docker_build
