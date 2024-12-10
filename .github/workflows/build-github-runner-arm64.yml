@@ -1,0 +1,35 @@
+name: Build Github Action Runner ARM64
+
+jobs:
+  build_and_push_job:
+    runs-on: ARM64
+    name: Build and Push Job
+    steps:
+      -
+        name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.DOCKER_REGISTRY }}
+          username: github
+          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD_GITHUB }}    
+      - 
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: false
+      - 
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.OCI_SSH_PRIVATE_KEY_GITHUB }}
+      - 
+        name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v6
+        with:
+          context: "{{defaultContext}}:github-runner"
+          push: true
+          pull: true
+          no-cache: true
+          tags: ${{ vars.DOCKER_REGISTRY }}/infrastructure/github-runner:latest
+          ssh: |
+            default=${{ env.SSH_AUTH_SOCK }}
