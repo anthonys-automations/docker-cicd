@@ -7,14 +7,14 @@ ARG ARCHITECTURE="arm64"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-COPY ca-certificates/ /usr/local/share/ca-certificates/
+# COPY ca-certificates/ /usr/local/share/ca-certificates/
 
 # update the base packages and add a non-sudo user
 RUN apt-get update -y && apt-get upgrade -y && useradd -d /opt/actions-runner --system github
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip \
-    docker.io docker-compose-v2 ; apt-get clean
+    docker.io docker-compose-v2 git openssh-client ; apt-get clean
 
 RUN cd /opt && mkdir actions-runner && cd actions-runner \
     && curl -O -L https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${ARCHITECTURE}-${RUNNER_VERSION}.tar.gz \
