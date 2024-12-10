@@ -22,7 +22,7 @@ RUN cd /opt && mkdir actions-runner && cd actions-runner \
 
 RUN /opt/actions-runner/bin/installdependencies.sh ; apt-get clean
 
-RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ; apt-get clean
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
 
 # copy over the start.sh script
 COPY start.sh start.sh
