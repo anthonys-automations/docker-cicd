@@ -26,6 +26,7 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
 
 # copy over the start.sh script
 COPY start.sh start.sh
+COPY ssh-config /opt/actions-runner/.ssh/config
 #COPY docker-build.sh /opt/actions-runner/docker-build.sh
 #COPY docker-build.sudo /etc/sudoers.d/docker-build
 
