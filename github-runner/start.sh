@@ -5,16 +5,29 @@ ACCESS_TOKEN=$ACCESS_TOKEN
 
 REG_TOKEN=$(curl -sX POST -H "Authorization: token ${ACCESS_TOKEN}" https://api.github.com/orgs/${ORGANIZATION}/actions/runners/registration-token | jq .token --raw-output)
 
-cd /opt/actions-runner
+# Path to the Docker socket
+DOCKER_SOCK="/var/run/docker.sock"
 
-./config.sh --url https://github.com/${ORGANIZATION} --token ${REG_TOKEN}
+# Check if the Docker socket exists
+if [ -S "${DOCKER_SOCK}" ]; then
+    # Retrieve the GID of the Docker socket
+    DOCKER_GID=$(stat -c '%g' "${DOCKER_SOCK}")
+    
+    if [ -n "${DOCKER_GID}" ]; then
+        groupmod -g "${DOCKER_GID}" docker
+        usermod -aG docker github
+    fi
+fi
+
+cd /opt/actions-runner
+sudo -u github /opt/actions-runner/config.sh --url https://github.com/${ORGANIZATION} --token ${REG_TOKEN}
 
 cleanup() {
     echo "Removing runner..."
-    ./config.sh remove --unattended --token ${REG_TOKEN}
+    sudo -u github /opt/actions-runner/config.sh remove --unattended --token ${REG_TOKEN}
 }
 
 trap 'cleanup; exit 130' INT
 trap 'cleanup; exit 143' TERM
 
-./run.sh & wait $!
+sudo -u github /opt/actions-runner/run.sh & wait $!

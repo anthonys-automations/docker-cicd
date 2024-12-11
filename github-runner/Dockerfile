@@ -32,9 +32,5 @@ COPY start.sh start.sh
 # make the script executable
 RUN chmod +x start.sh && chmod g+w /opt/actions-runner && chown -R root:github /opt/actions-runner
 
-# since the config and run script for actions are not allowed to be run by root,
-# set the user to "github" so all subsequent commands are run as the github user
-USER github
-
 # set the entrypoint to the start.sh script
 ENTRYPOINT ["./start.sh"]

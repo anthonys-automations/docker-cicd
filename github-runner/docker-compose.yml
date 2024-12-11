@@ -2,9 +2,12 @@ services:
   runner:
     image: registry.oci.verevkin.ca:5000/infrastructure/github-runner:latest
     restart: always
+    pull_policy: always
     environment:
       - ORGANIZATION=ecofarmtechnologies
       - ACCESS_TOKEN=REDACTED
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       mode: replicated
       replicas: 1
