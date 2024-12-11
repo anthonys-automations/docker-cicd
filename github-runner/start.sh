@@ -23,6 +23,8 @@ cd /opt/actions-runner
 sudo -u github /opt/actions-runner/config.sh --url https://github.com/${ORGANIZATION} --token ${REG_TOKEN}
 
 cleanup() {
+    echo "Refreshing registration token..."
+    REG_TOKEN=$(curl -sX POST -H "Authorization: token ${ACCESS_TOKEN}" https://api.github.com/orgs/${ORGANIZATION}/actions/runners/registration-token | jq .token --raw-output)
     echo "Removing runner..."
     sudo -u github /opt/actions-runner/config.sh remove --unattended --token ${REG_TOKEN}
 }
