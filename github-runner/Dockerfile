@@ -14,7 +14,8 @@ RUN apt-get update -y && apt-get upgrade -y && useradd -d /opt/actions-runner --
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip \
-    docker.io docker-compose-v2 sudo git openssh-client ; apt-get clean
+    docker.io docker-compose-v2 sudo git openssh-client software-properties-common wget ; \
+    apt-get clean
 
 # Install AzureCLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
