@@ -16,7 +16,7 @@ RUN apt-get update -y && apt-get upgrade -y && useradd ${USER}
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip \
-    docker.io docker-compose-v2 sudo git openssh-client software-properties-common wget file ; \
+    docker.io docker-compose-v2 sudo git jq libicu70 openssh-client software-properties-common wget file ; \
     apt-get clean
 
 # Install AzureCLI
@@ -30,23 +30,24 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/t
 # Install docker runner
 RUN cd /opt && mkdir actions-runner && cd actions-runner \
     && curl -O -L https://github.com/actions/runner/releases/download/v${GITHUB_RUNNER_VERSION}/actions-runner-linux-${ARCHITECTURE}-${GITHUB_RUNNER_VERSION}.tar.gz \
-    && tar xzf ./actions-runner-linux-${ARCHITECTURE}-${GITHUB_RUNNER_VERSION}.tar.gz
-RUN /opt/actions-runner/bin/installdependencies.sh ; apt-get clean
+    && tar xzf ./actions-runner-linux-${ARCHITECTURE}-${GITHUB_RUNNER_VERSION}.tar.gz \
+    && /opt/actions-runner/bin/installdependencies.sh \
+    && chmod g+w /opt/actions-runner \
+    && chown -R root:${USER} /opt/actions-runner ; \
+    apt-get clean
 
 # Install Azure DevOps agent
 RUN cd /opt && mkdir ado-agent && cd ado-agent \
     && curl -O -L https://vstsagentpackage.azureedge.net/agent/${ADO_AGENT_VERSION}/vsts-agent-linux-${ARCHITECTURE}-${ADO_AGENT_VERSION}.tar.gz \
-    && tar zxvf ./vsts-agent-linux-${ARCHITECTURE}-${ADO_AGENT_VERSION}.tar.gz
-RUN /opt/ado-agent/bin/installdependencies.sh ; apt-get clean
+    && tar zxvf ./vsts-agent-linux-${ARCHITECTURE}-${ADO_AGENT_VERSION}.tar.gz \
+    && /opt/ado-agent/bin/installdependencies.sh \
+    && chmod g+w /opt/ado-agent \
+    && chown -R root:${USER} /opt/ado-agent ; \
+    apt-get clean
 
 # copy over the start.sh script
-COPY start.sh start.sh
-COPY ssh-config /home/${USER}/.ssh/config
-#COPY docker-build.sh /opt/actions-runner/docker-build.sh
-#COPY docker-build.sudo /etc/sudoers.d/docker-build
-
-# make the script executable
-RUN chmod +x start.sh && chmod g+w /opt/actions-runner /opt/ado-agent && chown -R root:${USER} /opt/actions-runner /opt/ado-agent
+COPY --chmod=755 start-*.sh /
+COPY --chown=${USER} ssh-config /home/${USER}/.ssh/config
 
 # set the entrypoint to the start.sh script
-ENTRYPOINT ["./start.sh"]
+ENTRYPOINT ["/start-github.sh"]
