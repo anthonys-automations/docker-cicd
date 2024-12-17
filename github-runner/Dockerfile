@@ -25,7 +25,7 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
 # Install SQLCMD
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc && \
     add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/22.04/prod.list)" && \
-    ACCEPT_EULA=Y apt-get install mssql-tools18 unixodbc-dev ; apt-get clean
+    ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev ; apt-get clean
 
 # Install docker runner
 RUN cd /opt && mkdir actions-runner && cd actions-runner \

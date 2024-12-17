@@ -33,7 +33,7 @@ cleanup() {
     # If the agent has some running jobs, the configuration removal process will fail.
     # So, give it some time to finish the job.
     while true; do
-      ./config.sh remove --unattended --auth "PAT" --token $(cat "${AZP_TOKEN_FILE}") && break
+      sudo -u ${USER} ./config.sh remove --unattended --auth "PAT" --token $(cat "${AZP_TOKEN_FILE}") && break
 
       echo "Retrying in 30 seconds..."
       sleep 30
@@ -77,7 +77,7 @@ trap "cleanup; exit 143" TERM
 
 print_header "3. Configuring Azure Pipelines agent..."
 
-./config.sh --unattended \
+sudo -u ${USER} ./config.sh --unattended \
   --agent "${AZP_AGENT_NAME:-$(hostname)}" \
   --url "${AZP_URL}" \
   --auth "PAT" \
@@ -93,4 +93,4 @@ chmod +x ./run.sh
 
 # To be aware of TERM and INT signals call ./run.sh
 # Running it with the --once flag at the end will shut down the agent after the build is executed
-./run.sh "$@" & wait $!
+sudo -u ${USER} ./run.sh "$@" & wait $!

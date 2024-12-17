@@ -2,6 +2,7 @@
 
 ORGANIZATION=$ORGANIZATION
 ACCESS_TOKEN=$ACCESS_TOKEN
+LABELS=$LABELS
 
 # Path to the Docker socket
 DOCKER_SOCK="/var/run/docker.sock"
@@ -26,7 +27,7 @@ cleanup() {
     echo "Refreshing registration token..."
     REG_TOKEN=$(curl -sX POST -H "Authorization: token ${ACCESS_TOKEN}" https://api.github.com/orgs/${ORGANIZATION}/actions/runners/registration-token | jq .token --raw-output)
     echo "Removing runner..."
-    sudo -u ${USER} /opt/actions-runner/config.sh remove --unattended --token ${REG_TOKEN}
+    sudo -u ${USER} /opt/actions-runner/config.sh remove --unattended --token ${REG_TOKEN} --labels "${LABELS}"
 }
 
 trap 'cleanup; exit 130' INT
