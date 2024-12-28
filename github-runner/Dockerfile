@@ -11,17 +11,18 @@ ENV USER=agent-runner
 
 COPY ca-certificates/ /usr/local/share/ca-certificates/
 
-# add NodeJS repository
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
-
 # update the base packages and add a non-sudo user
 RUN apt-get update -y && apt-get upgrade -y && useradd ${USER}
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip \
     docker.io docker-compose-v2 sudo git jq libicu70 openssh-client software-properties-common \
-    wget file zip unzip npm ; \
+    wget file zip unzip ; \
     apt-get clean
+
+# Install NodeJS
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && \
+    apt-get install -y nodejs npm ; apt-get clean
 
 # Install AzureCLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
