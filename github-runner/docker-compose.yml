@@ -1,6 +1,7 @@
 services:
   runner:
     image: registry.oci.verevkin.ca:5000/infrastructure/github-runner:latest
+    network_mode: "host"
     restart: always
     pull_policy: always
     environment:
