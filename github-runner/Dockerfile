@@ -22,7 +22,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 
 # Install NodeJS
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && \
-    apt-get install -y nodejs npm ; apt-get clean
+    apt-get install -y nodejs ; apt-get clean
 
 # Install AzureCLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
