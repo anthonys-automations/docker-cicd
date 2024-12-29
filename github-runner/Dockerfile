@@ -27,6 +27,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && \
 # Install AzureCLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
 
+# Install Oracle OCI CLI
+RUN bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+
 # Install SQLCMD
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc && \
     add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/22.04/prod.list)" && \
