@@ -22,7 +22,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 
 # Install NodeJS
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && \
-    apt-get install -y nodejs ; apt-get clean
+    apt-get install -y nodejs && npm install --global yarn ; apt-get clean
 
 # Install AzureCLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
@@ -36,7 +36,7 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/t
     ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev ; apt-get clean
 
 # Install OWASP DependencyCheck
-RUN VERSION=$(curl -s https://jeremylong.github.io/DependencyCheck/current.txt) \
+RUN cd /opt && VERSION=$(curl -s https://jeremylong.github.io/DependencyCheck/current.txt) \
     curl -Ls "https://github.com/jeremylong/DependencyCheck/releases/download/v$VERSION/dependency-check-$VERSION-release.zip" --output dependency-check.zip &&
     unzip dependency-check.zip && mkdir -p dependency-check/data/ && chown ${USER} dependency-check/data/
 
