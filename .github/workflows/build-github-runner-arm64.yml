@@ -36,6 +36,7 @@ jobs:
         id: docker_build
         uses: docker/build-push-action@v6
         with:
+          context: "{{defaultContext}}:github-runner"
           push: false
           pull: true
           load: true
