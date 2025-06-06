@@ -16,7 +16,7 @@ RUN apt-get update -y && apt-get upgrade -y && useradd ${USER}
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip \
-    docker.io docker-compose-v2 sudo git jq libicu70 openssh-client software-properties-common \
+    docker.io docker-compose-v2 sudo git jq openssh-client software-properties-common \
     wget file zip unzip openjdk-21-jdk mariadb-client apache2-utils ; \
     apt-get clean
 
