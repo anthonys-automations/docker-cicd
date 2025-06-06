@@ -4,39 +4,45 @@ jobs:
   build_and_push_job:
     runs-on: ARM64
     name: Build and Push Job
-    env:
-      DOCKER_HOST: 'ssh://github@172.17.0.1'
+
     steps:
-      - 
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: true
           lfs: false
-      - 
-        uses: webfactory/ssh-agent@v0.9.0
+
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.OCI_SSH_PRIVATE_KEY_GITHUB }}
-      -
-        name: Login to Docker Registry
+
+      - name: Login to Docker Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ vars.DOCKER_REGISTRY }}
           username: github
           password: ${{ secrets.DOCKER_REGISTRY_PASSWORD_GITHUB }}    
-      -
-        name: Set up Docker Buildx
+
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          endpoint: ssh://github@172.17.0.1
-      - 
-        name: Build and push
+
+      - name: Build and no push
         id: docker_build
         uses: docker/build-push-action@v6
         with:
-          context: "{{defaultContext}}:github-runner"
-          push: true
+          push: false
           pull: true
+          load: true
           no-cache: true
           tags: ${{ vars.DOCKER_REGISTRY }}/infrastructure/github-runner:latest
-          ssh: |
-            default=${{ env.SSH_AUTH_SOCK }}
+
+      - name: Push to registry
+        run: |
+          docker push ${{ vars.DOCKER_REGISTRY }}/infrastructure/github-runner:latest
+
+      - name: Output image info
+        run: |
+          docker image ls --no-trunc ${{ vars.DOCKER_REGISTRY }}/infrastructure/github-runner:latest >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Images cleanup
+        run: |
+          docker image prune -f
