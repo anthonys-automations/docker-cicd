@@ -1,8 +1,8 @@
 # base
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # set the github runner version
-ARG GITHUB_RUNNER_VERSION="2.321.0"
+ARG GITHUB_RUNNER_VERSION="2.325.0"
 ARG ADO_AGENT_VERSION="4.248.0"
 ARG ARCHITECTURE="arm64"
 ARG DEBIAN_FRONTEND=noninteractive
