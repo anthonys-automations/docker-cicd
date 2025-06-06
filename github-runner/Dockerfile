@@ -36,8 +36,8 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/t
     ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev ; apt-get clean
 
 # Install OWASP DependencyCheck
-RUN cd /opt && VERSION=$(curl -s https://jeremylong.github.io/DependencyCheck/current.txt) \
-    curl -Ls "https://github.com/jeremylong/DependencyCheck/releases/download/v$VERSION/dependency-check-$VERSION-release.zip" --output dependency-check.zip && \
+RUN cd /opt && VERSION=$(curl -s https://dependency-check.github.io/DependencyCheck/current.txt) \
+    curl -Ls "https://github.com/dependency-check/DependencyCheck/releases/download/v$VERSION/dependency-check-$VERSION-release.zip" --output dependency-check.zip && \
     unzip dependency-check.zip && mkdir -p dependency-check/data/ && chown ${USER} dependency-check/data/
 
 # Install docker runner
