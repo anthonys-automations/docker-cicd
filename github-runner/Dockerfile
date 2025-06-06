@@ -17,11 +17,11 @@ RUN apt-get update -y && apt-get upgrade -y && useradd ${USER}
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     curl jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip \
     docker.io docker-compose-v2 sudo git jq libicu70 openssh-client software-properties-common \
-    wget file zip unzip openjdk-21-jdk mariadb-client-10.6 apache2-utils ; \
+    wget file zip unzip openjdk-21-jdk mariadb-client apache2-utils ; \
     apt-get clean
 
 # Install NodeJS
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && \
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && npm install --global yarn ; apt-get clean
 
 # Install AzureCLI
@@ -31,7 +31,7 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash ; apt-get clean
 RUN bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
 
 # Install SQLCMD
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc && \
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | tee /etc/apt/trusted.gpg.d/microsoft.asc && \
     add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/22.04/prod.list)" && \
     ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev ; apt-get clean
 
