@@ -1,0 +1,66 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "description": "Config for the standalone Renovate run in .github/workflows/renovate.yml. Automerge is enabled because base images are pinned to explicit releases and need automated bumps. No 'schedule' here on purpose: run timing is owned solely by the workflow cron, so this config never blocks an on-demand workflow_dispatch run. 'platformAutomerge' is off because GitHub's auto-merge queue only releases a PR once required checks pass, which would need branch protection; instead the workflow dispatches .github/workflows/validate-build.yml on each renovate/* branch (a bot push starts no workflow run, an explicit dispatch does) and Renovate merges once that check is green - usually on the following run. 'prHourlyLimit' is switched off from its default of 2: that default counts every PR opened in the current clock hour, including ones already closed, and once it is reached Renovate still creates the branch but silently skips the PR - a debug-level event, so an info-level run shows 'Branch created' and nothing else and the workflow's log assertions still pass. One grouped PR per run needs no rate limiting. Note: 'comment' is not a Renovate option - using it aborted an entire run with a config-validation error, so annotations must live in this 'description' field.",
+  "timezone": "Etc/UTC",
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "prCreation": "immediate",
+  "prHourlyLimit": 0,
+  "rebaseWhen": "behind-base-branch",
+  "separateMajorMinor": false,
+  "labels": [
+    "dependencies"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep the sandbox-browser Playwright npm package aligned with its base image tag. The npm registry and the MCR tag list release independently, so looking this up on the npm datasource would let the two pins drift to different versions; Playwright resolves browsers by revision, so that drift builds cleanly and only fails at runtime. Driving this pin from the same docker tag list as the FROM line (with the 'v'/'-noble' decoration stripped) means both updates resolve to the same version or neither moves.",
+      "managerFilePatterns": [
+        "/^sandbox-browser\\/Dockerfile$/"
+      ],
+      "matchStrings": [
+        "playwright@(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+      ],
+      "depNameTemplate": "mcr.microsoft.com/playwright",
+      "datasourceTemplate": "docker",
+      "extractVersionTemplate": "^v(?<version>\\d+\\.\\d+\\.\\d+)-noble$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Everything actionable lands in one branch/PR, so a run produces a single validate-build.yml dispatch and a single merge rather than one per dependency. The manager is listed explicitly instead of grouping '*': github-actions must stay out of the group because GITHUB_TOKEN cannot push under .github/workflows, and a grouped branch containing such a change would fail for every other update in it too. Combined with the top-level 'separateMajorMinor: false', which stops Renovate splitting major updates into their own branch, this yields exactly one renovate/* branch per run.",
+      "matchManagers": [
+        "dockerfile",
+        "custom.regex"
+      ],
+      "groupName": "all dependencies"
+    },
+    {
+      "description": "Bump the pinned Alpine base image in all Dockerfiles",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "matchPackageNames": [
+        "alpine"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "GitHub Actions updates are listed on the dependency dashboard instead of raising branches: GITHUB_TOKEN has no 'workflow' scope, so pushing a change under .github/workflows is rejected and the run would fail on every attempt. Tick an item on the dashboard only if you intend to apply that bump by hand.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "automerge": false,
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "description": "Disabled because the run authenticates with the built-in GITHUB_TOKEN, which cannot read Dependabot alerts: that is a GitHub App 'vulnerability_alerts' permission and there is no matching key for the Actions token's 'permissions:' block, so it cannot be granted from the workflow. Leaving this enabled only produced 'WARN: Cannot access vulnerability alerts' on every run (a warning, so the log check still passed) and never any extra PR. Nothing is lost in practice either: Dependabot alerts do not cover the pinned Alpine base images, and the github-actions manager is already dashboard-only. Re-enable this together with a PAT that has the 'security_events' scope if alert-driven PRs are ever wanted.",
+    "enabled": false
+  }
+}

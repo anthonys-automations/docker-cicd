@@ -1,0 +1,50 @@
+# Build-only validation of the runner image.
+#
+# Added so Renovate branches get a real check result. The bot authenticates
+# with GITHUB_TOKEN, whose pushes and pull requests never start a workflow run,
+# so a `renovate/*` branch would otherwise carry no status at all and automerge
+# would wait forever. The Renovate workflow dispatches this one explicitly
+# (an API-triggered `workflow_dispatch` does run, unlike a bot push), which
+# reports a check on the branch head that Renovate can then gate the merge on.
+#
+# Deliberately build-only: build-github-runner-arm64.yml pushes to DockerHub,
+# which must never happen from an unmerged branch.
+name: Validate Image Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The check-run name Renovate looks for starts with "validate"; keep it that way.
+  validate:
+    # Same self-hosted runner as the publishing workflow: the Dockerfile pulls
+    # arm64 runner/agent tarballs and runs their dependency installers, so the
+    # build only succeeds natively on arm64.
+    runs-on: ARM64
+    name: validate-github-runner
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./github-runner
+          file: ./github-runner/Dockerfile
+          push: false
+          # Mirrors the build arg used by the publishing workflow so a missing
+          # or renamed ARG is caught here rather than at release time.
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+
+      - name: Images cleanup
+        if: always()
+        run: docker image prune -f

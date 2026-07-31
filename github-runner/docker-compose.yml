@@ -1,12 +1,18 @@
 services:
   runner:
-    image: registry.oci.verevkin.ca:5000/infrastructure/github-runner:latest
+    # The pipeline no longer publishes an unsuffixed `latest`: that tag cannot
+    # say which architecture it runs on. Deployments should pin an immutable
+    # release (e.g. :2026.07.31.1-arm64); this alias is host-convenience only.
+    image: anthonysautomations/github-runner:latest-arm64
+    hostname: build1.arm-anthonys-automations # fixed name so recreation reuses the same runner instead of registering a new one
     network_mode: "host"
     restart: always
     pull_policy: always
+    stop_grace_period: 30s # give the entrypoint's cleanup trap time to de-register before SIGKILL
     environment:
-      - ORGANIZATION=ecofarmtechnologies
+      - ORGANIZATION=anthonys-automations
       - ACCESS_TOKEN=REDACTED
+      - LABELS=self-hosted,linux,ARM64,docker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
@@ -14,8 +20,8 @@ services:
       replicas: 1
       resources:
         limits:
-          cpus: '0.35'
-          memory: 300M
+          cpus: '1.5'
+          memory: 2000M
         reservations:
           cpus: '0.25'
-          memory: 128M
+          memory: 200M

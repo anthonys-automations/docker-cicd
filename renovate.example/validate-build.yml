@@ -1,0 +1,47 @@
+# Build-only validation of every service image.
+#
+# Added so Renovate branches get a real check result. The bot authenticates
+# with GITHUB_TOKEN, whose pushes and pull requests never start a workflow run,
+# so a `renovate/*` branch would otherwise carry no status at all and automerge
+# would wait forever. The Renovate workflow dispatches this one explicitly
+# (an API-triggered `workflow_dispatch` does run, unlike a bot push), which
+# reports a check on the branch head that Renovate can then gate the merge on.
+#
+# Deliberately build-only: the publishing workflows allocate an immutable
+# release version and push to DockerHub, which must never happen from an
+# unmerged branch.
+name: Validate Image Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [exim, postfix, tinyproxy, sandbox-browser]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          platforms: linux/amd64
+          push: false
+          # Mirrors the build arg used by the publishing workflow so a missing
+          # or renamed ARG is caught here rather than at release time.
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}

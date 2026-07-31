@@ -1,5 +1,5 @@
-# base
-FROM ubuntu:24.04
+# Digest pin lets Renovate advance the moving Ubuntu 24.04 tag deliberately.
+FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
 
 # set the github runner version
 ARG GITHUB_RUNNER_VERSION="2.331.0"
@@ -57,6 +57,11 @@ RUN cd /opt && mkdir ado-agent && cd ado-agent \
     && chmod g+w /opt/ado-agent \
     && chown -R root:${USER} /opt/ado-agent ; \
     apt-get clean
+
+# Source provenance, declared after the package layers so a new commit does not
+# invalidate their cache. Best-effort only: a container spec can override it.
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=${GIT_COMMIT}
 
 # copy over the start.sh script
 COPY --chmod=755 start-*.sh /

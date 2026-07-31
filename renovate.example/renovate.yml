@@ -1,0 +1,216 @@
+# Standalone (self-hosted) Renovate bot run.
+# Requested to keep the now-pinned Alpine base images and GitHub Actions
+# versions up to date automatically: pinning removed the implicit `latest`
+# drift, so an automated updater is needed to replace it. This workflow's cron
+# is the single source of truth for run timing (renovate.json intentionally has
+# no `schedule`); renovate.json only holds the automerge policy.
+name: Renovate
+
+on:
+  # Manual trigger for on-demand dependency runs
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Renovate log level'
+        required: false
+        default: 'info'
+        type: choice
+        options:
+          - info
+          - debug
+
+  # Weekly schedule - runs every Friday at 03:00 UTC
+  schedule:
+    - cron: '0 3 * * 5'
+
+# Renovate pushes branches and opens PRs with the built-in GITHUB_TOKEN, so the
+# job needs write scopes. `issues: write` is for the dependency dashboard issue
+# (`:dependencyDashboard` in renovate.json); without it Renovate only logs
+# "Could not ensure issue: integration-unauthorized". `actions: write` is what
+# lets this job dispatch validate-build.yml on the bot's branches, and
+# checks/statuses read is how Renovate sees the resulting branch status.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+env:
+  # Shared by the config validator and the Renovate run so both use the same
+  # release; the action's own default would otherwise drift from the validator
+  # and validation could accept config the run rejects. Pinned independently of
+  # the action's default renovate-version, so moving it is a deliberate
+  # Renovate major upgrade rather than a side effect of an action bump.
+  RENOVATE_IMAGE_TAG: '43'
+  # Written inside the container; /tmp is bind-mounted by the action, so the
+  # verification step below can read it back on the runner.
+  RENOVATE_LOG_FILE: /tmp/renovate-log.ndjson
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # A run with an invalid renovate.json (e.g. the unsupported `comment`
+      # key) still exits 0 from the action, so it silently did nothing.
+      # Validate first so bad config turns the job red immediately.
+      - name: Validate Renovate configuration
+        run: |
+          docker run --rm \
+            --volume "${{ github.workspace }}:/usr/src/app" \
+            "ghcr.io/renovatebot/renovate:${RENOVATE_IMAGE_TAG}" \
+            renovate-config-validator --strict
+
+      - name: Run Renovate
+        # v46 is the first line that runs on node24; v43 ran on node20, which
+        # the runners now warn about as deprecated.
+        uses: renovatebot/github-action@v46.2.0
+        env:
+          # Restrict the run to this repository only
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_PLATFORM: github
+          # GitHub's own auto-merge queue only releases a PR once *required*
+          # checks pass, which needs branch protection to be configured; the
+          # dispatched validate-build check is not required, so let Renovate do
+          # the merge itself once it sees that check go green.
+          RENOVATE_PLATFORM_AUTOMERGE: 'false'
+          RENOVATE_ONBOARDING: 'false'
+          RENOVATE_REQUIRE_CONFIG: 'required'
+          LOG_LEVEL: ${{ inputs.logLevel || 'info' }}
+          LOG_FILE: ${{ env.RENOVATE_LOG_FILE }}
+          LOG_FILE_LEVEL: info
+        with:
+          renovate-version: ${{ env.RENOVATE_IMAGE_TAG }}
+          # Same as the action's default allow-list (RENOVATE_*, LOG_LEVEL,
+          # GITHUB_COM_TOKEN, NODE_OPTIONS, NO_COLOR, proxy vars) plus
+          # LOG_FILE*, which has to be added explicitly or no log file is
+          # produced to inspect.
+          env-regex: '^(?:RENOVATE_\w+|LOG_LEVEL|LOG_FILE|LOG_FILE_LEVEL|GITHUB_COM_TOKEN|NODE_OPTIONS|NO_COLOR|(?:HTTPS?|NO)_PROXY|(?:https?|no)_proxy)$'
+          # The earlier run failed with "'token' MUST be passed using its input
+          # or the 'RENOVATE_TOKEN' environment variable" because it referenced
+          # an unset RENOVATE_TOKEN secret. This repository always uses the
+          # built-in GITHUB_TOKEN instead. Three consequences to be aware of:
+          # its pushes never start a workflow run (hence the explicit dispatch
+          # step below), it cannot write files under .github/workflows (Actions
+          # version bumps are routed to the dependency dashboard), and it
+          # cannot read Dependabot alerts (so `vulnerabilityAlerts` is disabled
+          # in renovate.json to avoid a permanent "Cannot access vulnerability
+          # alerts" warning).
+          token: ${{ github.token }}
+
+      # Renovate exits 0 even when the repository run ends in an error state
+      # (config-validation, auth failures, ...), which previously showed up as a
+      # green job that had done nothing. Inspect the structured log and fail.
+      - name: Verify Renovate run
+        run: |
+          set -euo pipefail
+
+          if [[ ! -s "${RENOVATE_LOG_FILE}" ]]; then
+            echo "::error::Renovate produced no log file at ${RENOVATE_LOG_FILE}; cannot confirm it ran."
+            exit 1
+          fi
+
+          # bunyan levels: 50 = error, 60 = fatal.
+          errors=$(jq -s '[.[] | select(.level >= 50)] | length' "${RENOVATE_LOG_FILE}")
+          if [[ "${errors}" -gt 0 ]]; then
+            echo "::error::Renovate logged ${errors} error(s):"
+            jq -rs '.[] | select(.level >= 50) | "  \(.msg)"' "${RENOVATE_LOG_FILE}"
+            exit 1
+          fi
+
+          result=$(jq -rs 'last(.[] | select(.msg == "Repository finished") | .result) // "missing"' "${RENOVATE_LOG_FILE}")
+          echo "Repository result: ${result}"
+          if [[ "${result}" != "done" ]]; then
+            echo "::error::Renovate finished with result '${result}' instead of 'done'."
+            exit 1
+          fi
+
+      # Nothing the bot pushes starts a workflow run, so a renovate/* branch
+      # carries no status and automerge would wait forever. An explicitly
+      # dispatched workflow_dispatch run *is* allowed, so trigger the
+      # build-only validation here; its check lands on the branch head and the
+      # next Renovate run merges the PR once it is green. This keeps the merge
+      # gated on a real build rather than on `ignoreTests`.
+      - name: Dispatch build validation on Renovate branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          branches=$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/heads/renovate/" \
+            --jq '.[].ref | sub("^refs/heads/"; "")')
+
+          if [[ -z "${branches}" ]]; then
+            echo "No renovate/* branches to validate."
+            exit 0
+          fi
+
+          while read -r branch; do
+            [[ -n "${branch}" ]] || continue
+            sha=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${branch}" --jq '.sha')
+
+            # Re-dispatching on every scheduled run would pile up duplicate
+            # runs; only the branch head that has no validation yet needs one.
+            existing=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${sha}/check-runs" \
+              --jq '[.check_runs[] | select(.name | startswith("validate"))] | length')
+            if [[ "${existing}" -gt 0 ]]; then
+              echo "${branch}@${sha:0:7}: already validated (${existing} check run(s))"
+              continue
+            fi
+
+            # A branch cut before validate-build.yml existed does not contain
+            # the workflow file, so the dispatch is rejected; Renovate rebases
+            # it onto the base branch on a later run and it becomes
+            # dispatchable then.
+            if gh workflow run validate-build.yml --ref "${branch}"; then
+              echo "${branch}@${sha:0:7}: validation dispatched"
+            else
+              echo "::warning::Could not dispatch validate-build.yml on ${branch}; it likely predates that workflow and will be retried after Renovate rebases it."
+            fi
+          done <<< "${branches}"
+
+      - name: Add run summary
+        if: always()
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## Renovate Summary"
+            echo "- **Repository:** ${GITHUB_REPOSITORY}"
+            echo "- **Trigger:** ${GITHUB_EVENT_NAME}"
+            echo "- **Result:** ${JOB_STATUS}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Link every PR this run touched, so an unattended (and possibly
+          # auto-merged) dependency change can be audited straight from the run.
+          if [[ -s "${RENOVATE_LOG_FILE}" ]]; then
+            prs=$(jq -rs --arg base "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull" '
+              [ .[] | select(.pr != null) | {pr: .pr, title: (.prTitle // ""), msg: .msg} ]
+              | group_by(.pr)
+              | map("- [#\(.[0].pr)](\($base)/\(.[0].pr)) \(.[0].title) — \([.[].msg] | unique | join(", "))")
+              | .[]' "${RENOVATE_LOG_FILE}")
+          else
+            prs=""
+          fi
+
+          if [[ -n "${prs}" ]]; then
+            {
+              echo
+              echo "### Pull requests"
+              echo "${prs}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- **Pull requests:** none created or updated" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          JOB_STATUS: ${{ job.status }}
