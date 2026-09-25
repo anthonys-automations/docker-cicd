@@ -1,9 +1,9 @@
 # Digest pin lets Renovate advance the moving Ubuntu 24.04 tag deliberately.
-FROM ubuntu:24.04@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea
+FROM ubuntu:24.04@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3
 
 # set the github runner version
-ARG GITHUB_RUNNER_VERSION="2.336.0"
-ARG ADO_AGENT_VERSION="5.277.0"
+ARG GITHUB_RUNNER_VERSION="2.337.0"
+ARG ADO_AGENT_VERSION="5.279.0"
 ARG ARCHITECTURE="arm64"
 ARG DEBIAN_FRONTEND=noninteractive
 
